@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The Listening Rooms — Music Library</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#030303;
+    font-family: Georgia, 'Times New Roman', serif; color:#e8e0d0; }
+  #app, #app canvas { position:fixed; inset:0; }
+
+  #hud { position:fixed; top:0; left:0; right:0; display:flex; align-items:center;
+    justify-content:space-between; padding:14px 22px; pointer-events:none; z-index:5;
+    background:linear-gradient(#030303cc, transparent); }
+  #hud h1 { font-size:19px; letter-spacing:3px; margin:0; color:#c9a227; font-weight:bold; }
+  #hud h1 small { color:#8a8272; letter-spacing:1px; font-size:12px; margin-left:10px; font-style:italic; }
+  #mute { pointer-events:auto; background:#171512; color:#c9a227; border:1px solid #3a352c;
+    font-size:17px; padding:6px 13px; cursor:pointer; border-radius:3px; }
+  #mute.off { color:#6a6355; }
+  #room-now { position:fixed; top:60px; left:22px; z-index:5; color:#c9a227;
+    font-style:italic; font-size:15px; text-shadow:0 1px 4px #000; }
+  #now-playing { position:fixed; top:60px; right:22px; z-index:5; color:#d8d2c4;
+    font-style:italic; font-size:13.5px; background:#12100dd8; border:1px solid #3a352c;
+    padding:6px 14px; border-radius:20px; opacity:0; transition:opacity .5s; max-width:44vw;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #now-playing.show { opacity:1; }
+  #hint { position:fixed; bottom:76px; left:0; right:0; text-align:center; z-index:5;
+    color:#7a7264; font-size:13px; font-style:italic; pointer-events:none; text-shadow:0 1px 4px #000; }
+
+  #timeline { position:fixed; bottom:0; left:0; right:0; display:flex; z-index:5;
+    background:linear-gradient(transparent, #030303e6 40%); padding:12px 18px 12px; gap:4px; }
+  .tl-seg { flex:1; border-top:3px solid #4a4335; padding-top:7px; text-align:center;
+    cursor:pointer; color:#8a8272; transition:all .15s; }
+  .tl-seg span { display:block; font-size:12.5px; }
+  .tl-seg em { display:block; font-size:10px; font-style:normal; color:#5f594c; margin-top:2px; }
+  .tl-seg:hover { color:#e8e0d0; }
+  .tl-seg.current { color:#c9a227; border-top-color:#c9a227; transform:translateY(-2px); }
+  .tl-seg.current em { color:#8a8272; }
+
+  #detail { position:fixed; top:0; bottom:0; right:0; width:min(430px, 92vw); background:#12100dfa;
+    border-left:1px solid #3a352c; z-index:20; overflow-y:auto; padding:26px;
+    box-sizing:border-box; transform:translateX(105%); transition:transform .28s ease; }
+  #detail.open { transform:translateX(0); }
+  .close { position:absolute; top:14px; right:16px; background:none; border:none;
+    color:#8a8272; font-size:26px; cursor:pointer; font-family:inherit; z-index:2; }
+  .close:hover { color:#e8e0d0; }
+  .d-art img { width:100%; border:1px solid #3a352c; display:block; }
+  .d-noart { width:100%; aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+    background:#1c1a16; color:#c9a227; font-size:22px; text-align:center; }
+  .d-head h2 { margin:16px 0 2px; font-size:23px; color:#f0e8d8; }
+  .d-head h3 { margin:0 0 14px; font-size:16px; color:#c9a227; font-weight:normal; font-style:italic; }
+  .note { background:#1a1610; border:1px solid #4a4030; border-left:3px solid #c9a227;
+    padding:12px 14px; font-size:14px; line-height:1.55; color:#ddd4c0; font-style:italic; margin-bottom:14px; }
+  .note span { display:block; font-style:normal; font-size:11px; letter-spacing:2px;
+    color:#c9a227; margin-bottom:6px; }
+  .d-meta { border-top:1px solid #2a271f; }
+  .mrow { display:flex; gap:12px; padding:7px 0; border-bottom:1px solid #2a271f; font-size:13.5px; }
+  .mrow span { color:#8a8272; min-width:70px; flex-shrink:0; }
+  .mrow b { color:#ddd4c0; font-weight:normal; }
+  .mrow i { color:#8a8272; }
+  .chips { margin:12px 0 2px; display:flex; flex-wrap:wrap; gap:6px; }
+  .chips span { border:1px solid #4a4436; color:#b8ac92; font-size:11.5px;
+    padding:3px 10px; border-radius:20px; }
+  ol.tracks { list-style:none; margin:14px 0 0; padding:0; }
+  ol.tracks li { display:flex; align-items:center; gap:10px; padding:6px 0;
+    border-bottom:1px solid #221f19; font-size:13.5px; color:#cfc6b2; }
+  ol.tracks .tt { flex:1; }
+  ol.tracks .tr { color:#c9a227; font-size:11px; }
+  .play { background:#1c1a16; color:#c9a227; border:1px solid #3a352c; width:28px; height:28px;
+    border-radius:50%; cursor:pointer; font-size:11px; flex-shrink:0; }
+  .play:hover { background:#2a271f; }
+
+  /* speech bubble */
+  #chat { position:fixed; z-index:15; transform:translate(-50%,-100%); background:#171410f2;
+    border:1px solid #c9a227; border-radius:8px; padding:10px 15px; max-width:310px;
+    pointer-events:none; opacity:0; transition:opacity .25s; box-shadow:0 4px 18px #000a; }
+  #chat.show { opacity:1; }
+  #chat:after { content:''; position:absolute; left:50%; bottom:-7px; transform:translateX(-50%);
+    border:7px solid transparent; border-top-color:#c9a227; border-bottom:none; }
+  #chat-name { color:#c9a227; font-size:10.5px; letter-spacing:2px; margin-bottom:4px; text-transform:uppercase; }
+  #chat-line { color:#e8e0d0; font-style:italic; font-size:14px; line-height:1.45; }
+
+  #intro { position:fixed; inset:0; background:#050403; z-index:40; display:flex;
+    flex-direction:column; align-items:center; justify-content:center; text-align:center;
+    transition:opacity .7s; }
+  #intro.gone { opacity:0; pointer-events:none; }
+  #intro h1 { color:#c9a227; letter-spacing:6px; font-size:min(44px, 7vw); margin:0 0 8px; }
+  #intro p.sub { color:#b8ac92; font-style:italic; font-size:17px; margin:0 0 30px; max-width:560px; padding:0 20px; }
+  #intro .stats { display:flex; gap:38px; margin-bottom:38px; }
+  #intro .stats div { text-align:center; }
+  #intro .stats b { display:block; font-size:34px; color:#f0e8d8; }
+  #intro .stats span { color:#8a8272; font-size:12px; letter-spacing:2px; }
+  #enter { background:#c9a227; color:#0d0c0a; border:none; font-family:inherit;
+    font-size:17px; letter-spacing:2px; padding:13px 42px; cursor:pointer; border-radius:3px; }
+  #enter:hover { background:#e0bc4a; }
+  #intro p.keys { color:#5f594c; font-size:13px; margin-top:26px; padding:0 20px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="vignette" style="position:fixed;inset:0;pointer-events:none;z-index:3;
+  background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.42) 100%);"></div>
+
+<div id="hud">
+  <h1>THE LISTENING ROOMS <small>one library · seven rooms · ninety years</small></h1>
+  <button id="mute" title="Toggle ambient music">🔊</button>
+</div>
+<div id="room-now">The Lobby</div>
+<div id="now-playing"></div>
+<div id="hint">Double-click anywhere to walk there · W A S D / arrows walk · drag to turn · click a sleeve · ★ = curator’s pick</div>
+<div id="timeline"></div>
+
+<div id="detail"><button class="close" id="detail-close">×</button><div id="detail-body"></div></div>
+<div id="chat"><div id="chat-name"></div><div id="chat-line"></div></div>
+
+<div id="intro">
+  <h1>THE LISTENING ROOMS</h1>
+  <p class="sub">Your library, staged as seven rooms — a jazz club, a diner, a record shop, a neon arcade, a teenager’s bedroom, a white gallery, and the cloud. Walk through; the music plays as you pass.</p>
+  <div class="stats">
+    <div><b id="stat-albums">–</b><span>ALBUMS</span></div>
+    <div><b id="stat-rooms">–</b><span>ROOMS</span></div>
+    <div><b id="stat-notes">–</b><span>CURATOR’S NOTES</span></div>
+  </div>
+  <button id="enter">STEP INSIDE</button>
+  <p class="keys">W A S D walk · Q/E or ←/→ turn · drag to look anywhere · scroll also walks · Esc closes panels · 🔊 toggles sound</p>
+</div>
+
+<!--THREE-->
+<!--DATA-->
+<!--APP-->
+</body>
+</html>

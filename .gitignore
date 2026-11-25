@@ -29,3 +29,6 @@ Packages/
 
 # Local secrets (AcoustID key) — never commit
 Secrets.xcconfig
+
+# The Listening Rooms: the built page embeds album covers and a library listing; kept on this Mac, not on GitHub
+ListeningRooms/The Listening Rooms.html
