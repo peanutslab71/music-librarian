@@ -1847,7 +1847,7 @@ enum AlbumPerfect {
         let distinctArtists = Set(primaryArtists)
         // most common album-artist and how much of the album agrees with it
         let aaCounts = Dictionary(grouping: kept.map { $0.albumArtist }.filter { !$0.isEmpty }, by: { $0 }).mapValues { $0.count }
-        let dominantAA = aaCounts.max(by: { $0.value < $1.value })?.key ?? ""
+        let dominantAA: String = aaCounts.max(by: { $0.value < $1.value })?.key ?? ""
         let aaAgree = kept.filter { !$0.albumArtist.isEmpty && $0.albumArtist == dominantAA }.count
         let looksCompilation = distinctArtists.count >= 2 &&
             (dominantAA.isEmpty || normText(dominantAA) == "various artists" || Double(aaAgree) < Double(kept.count) * 0.6) &&
@@ -1877,9 +1877,9 @@ enum AlbumPerfect {
             // tracks) — a lone stray tag ("Mick Jagger" on one track of an otherwise-blank
             // Rolling Stones album) shouldn't be propagated to the whole album; fall back to
             // the track-artist consensus instead.
-            let artistConsensus = Dictionary(grouping: kept.map { $0.artist }.filter { !$0.isEmpty }, by: { $0 }).mapValues { $0.count }.max(by: { $0.value < $1.value })?.key ?? ""
+            let artistConsensus: String = Dictionary(grouping: kept.map { $0.artist }.filter { !$0.isEmpty }, by: { $0 }).mapValues { $0.count }.max(by: { $0.value < $1.value })?.key ?? ""
             let aaWellSupported = !dominantAA.isEmpty && Double(aaAgree) >= Double(kept.count) * 0.5
-            let target = aaWellSupported ? dominantAA : artistConsensus
+            let target: String = aaWellSupported ? dominantAA : artistConsensus
             if !target.isEmpty {
                 var writes: [(rel: String, field: String, value: String)] = []
                 var lines: [String] = []
@@ -2002,9 +2002,9 @@ enum AlbumPerfect {
             }
         }
         let ownCovers = coverByFP.values.sorted { $0.pixels > $1.pixels }.map { $0.data }
-        let mostCommonArtist = Dictionary(grouping: kept.map { $0.artist }.filter { !$0.isEmpty }, by: { $0 })
+        let mostCommonArtist: String = Dictionary(grouping: kept.map { $0.artist }.filter { !$0.isEmpty }, by: { $0 })
             .mapValues { $0.count }.max(by: { $0.value < $1.value })?.key ?? ""
-        let fetchArtist = looksCompilation ? "Various Artists" : (dominantAA.isEmpty ? mostCommonArtist : dominantAA)
+        let fetchArtist: String = looksCompilation ? "Various Artists" : (dominantAA.isEmpty ? mostCommonArtist : dominantAA)
         let art = AlbumArtContext(artist: fetchArtist,
                                   album: dominantAlbum.isEmpty ? fallbackAlbum : dominantAlbum,
                                   rels: kept.map { rel($0.url) }, relArt: relArt, ownCovers: ownCovers)
